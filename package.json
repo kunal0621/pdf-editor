@@ -1,0 +1,15 @@
+{
+  "name": "pdf-editor",
+  "private": true,
+  "scripts": {
+    "dev:web": "npm --workspace web run dev",
+    "build:web": "npm --workspace web run build",
+    "lint:web": "npm --workspace web run lint",
+    "dev:api": "uvicorn app.main:app --reload --app-dir api",
+    "verify:api": "python -m compileall api/app"
+  },
+  "workspaces": [
+    "web"
+  ]
+}
+
