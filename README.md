@@ -6,7 +6,8 @@ Browser-first PDF editor scaffold with a Next.js frontend and FastAPI backend. T
 - Extracting page/text/image manifests
 - Previewing pages and thumbnails
 - Queueing edit operations in the browser
-- Exporting an edited PDF with an open-source engine
+- Applying queued changes into a live working PDF for side-by-side preview
+- Exporting a downloadable revised PDF only when requested
 
 ## Workspace Layout
 
@@ -46,6 +47,6 @@ Use `.env.example` as the base for local configuration.
 
 - This MVP is optimized for common digital PDFs, not every PDF edge case.
 - Text replacement uses a safe overlay/redaction strategy for many documents.
+- The UI keeps a mutable working PDF. `Apply Changes` updates the preview in place; `Export` generates the download using the original filename plus `revised`.
 - Complex layouts, flattened text, unusual encodings, or scanned PDFs may produce warnings during export.
 - The backend is structured around an engine interface so you can swap in Apryse or Nutrient later.
-

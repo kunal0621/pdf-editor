@@ -27,8 +27,14 @@ class StorageService:
     def source_path(self, document_id: str) -> Path:
         return self.document_dir(document_id) / "source.pdf"
 
+    def working_path(self, document_id: str) -> Path:
+        return self.document_dir(document_id) / "working.pdf"
+
     def export_path(self, document_id: str) -> Path:
         return self.document_dir(document_id) / "export.pdf"
+
+    def working_temp_path(self, document_id: str) -> Path:
+        return self.document_dir(document_id) / "working.next.pdf"
 
     def manifest_path(self, document_id: str) -> Path:
         return self.document_dir(document_id) / "manifest.json"
@@ -55,4 +61,3 @@ class StorageService:
 
 
 storage_service = StorageService()
-

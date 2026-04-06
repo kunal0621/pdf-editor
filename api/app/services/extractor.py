@@ -15,6 +15,8 @@ def build_manifest(
     storage: StorageService,
 ) -> DocumentManifest:
     document = fitz.open(source_path)
+    revision_token = source_path.stat().st_mtime_ns
+    original_revision = storage.source_path(document_id).stat().st_mtime_ns
     detected_fonts: set[str] = set()
     pages: list[PageManifest] = []
 
@@ -86,7 +88,7 @@ def build_manifest(
                 width=float(page.rect.width),
                 height=float(page.rect.height),
                 rotation=int(page.rotation),
-                preview_url=f"/documents/{document_id}/pages/{page_index + 1}/preview",
+                preview_url=f"/documents/{document_id}/pages/{page_index + 1}/preview?rev={revision_token}",
                 text_blocks=text_blocks,
                 image_blocks=image_blocks,
             )
@@ -98,7 +100,8 @@ def build_manifest(
         document_id=document_id,
         filename=filename,
         page_count=len(pages),
-        source_url=f"/documents/{document_id}/source",
+        source_url=f"/documents/{document_id}/source?rev={revision_token}",
+        original_source_url=f"/documents/{document_id}/source/original?rev={original_revision}",
         download_url=f"/documents/{document_id}/download",
         pages=pages,
         detected_fonts=sorted(detected_fonts),

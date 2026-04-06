@@ -3,25 +3,27 @@
 import { ChangeEvent, useEffect, useMemo, useReducer, useRef, useState, useTransition } from "react";
 
 import {
+  applyDocument,
   deleteDocument,
   exportDocument,
   getManifest,
-  saveOperations,
   toApiUrl,
   uploadDocument
-} from "@/lib/api";
-import { DocumentManifest, EditOperation, ImageBlock, PageManifest, TextBlock } from "@/lib/types";
-import { PdfCanvas } from "@/components/pdf-canvas";
+} from "../lib/api";
+import { DocumentManifest, EditOperation, ImageBlock, PageManifest, TextBlock } from "../lib/types";
+import { PdfCanvas } from "../components/pdf-canvas";
 
 type State = {
+  exportPath: any;
   documentId: string | null;
   manifest: DocumentManifest | null;
   selectedPage: number;
   selectedTextBlockId: string | null;
   selectedImageBlockId: string | null;
   operations: EditOperation[];
-  exportPath: string | null;
+  downloadPath: string | null;
   warnings: string[];
+  notice: string | null;
   error: string | null;
 };
 
@@ -32,7 +34,9 @@ type Action =
   | { type: "select_image"; payload: string | null }
   | { type: "add_operation"; payload: EditOperation }
   | { type: "remove_operation"; payload: number }
-  | { type: "set_export"; payload: { exportPath: string; warnings: string[] } }
+  | { type: "apply_complete"; payload: { manifest: DocumentManifest; warnings: string[]; notice: string } }
+  | { type: "set_export"; payload: { downloadPath: string; warnings: string[]; notice: string } }
+  | { type: "set_notice"; payload: string | null }
   | { type: "set_error"; payload: string | null }
   | { type: "reset" };
 
@@ -43,10 +47,23 @@ const initialState: State = {
   selectedTextBlockId: null,
   selectedImageBlockId: null,
   operations: [],
-  exportPath: null,
+  downloadPath: null,
   warnings: [],
-  error: null
+  notice: null,
+  error: null,
+  exportPath: undefined
 };
+
+function nextPageNumber(manifest: DocumentManifest, currentPage: number): number {
+  const availablePages = manifest.pages.map((page) => page.page_number);
+  if (!availablePages.length) {
+    return 1;
+  }
+  if (availablePages.includes(currentPage)) {
+    return currentPage;
+  }
+  return availablePages[0];
+}
 
 function reducer(state: State, action: Action): State {
   switch (action.type) {
@@ -54,7 +71,8 @@ function reducer(state: State, action: Action): State {
       return {
         ...initialState,
         documentId: action.payload.documentId,
-        manifest: action.payload.manifest
+        manifest: action.payload.manifest,
+        notice: "PDF uploaded. Queue edits, then click Apply Changes to refresh the preview."
       };
     case "select_page":
       return {
@@ -79,22 +97,44 @@ function reducer(state: State, action: Action): State {
       return {
         ...state,
         operations: [...state.operations, action.payload],
-        exportPath: null,
+        downloadPath: null,
         warnings: [],
+        notice: "Changes queued. Click Apply Changes to update the preview.",
         error: null
       };
     case "remove_operation":
       return {
         ...state,
         operations: state.operations.filter((_, index) => index !== action.payload),
-        exportPath: null,
-        warnings: []
+        downloadPath: null,
+        warnings: [],
+        notice: state.operations.length > 1 ? "Changes queued. Click Apply Changes to update the preview." : null
+      };
+    case "apply_complete":
+      return {
+        ...state,
+        manifest: action.payload.manifest,
+        selectedPage: nextPageNumber(action.payload.manifest, state.selectedPage),
+        selectedTextBlockId: null,
+        selectedImageBlockId: null,
+        operations: [],
+        downloadPath: null,
+        warnings: action.payload.warnings,
+        notice: action.payload.notice,
+        error: null
       };
     case "set_export":
       return {
         ...state,
-        exportPath: action.payload.exportPath,
-        warnings: action.payload.warnings
+        downloadPath: action.payload.downloadPath,
+        warnings: action.payload.warnings,
+        notice: action.payload.notice,
+        error: null
+      };
+    case "set_notice":
+      return {
+        ...state,
+        notice: action.payload
       };
     case "set_error":
       return {
@@ -122,6 +162,14 @@ function parsePageOrder(input: string): number[] {
     .split(",")
     .map((value) => Number.parseInt(value.trim(), 10))
     .filter((value) => Number.isFinite(value) && value > 0);
+}
+
+function normalizeWarnings(warnings: string[], unsupportedOperations: string[]): string[] {
+  const combined = [...warnings];
+  if (unsupportedOperations.length) {
+    combined.push(`Unsupported operations: ${unsupportedOperations.join(", ")}`);
+  }
+  return combined;
 }
 
 export function EditorWorkspace() {
@@ -184,7 +232,7 @@ export function EditorWorkspace() {
               manifest
             }
           });
-          setPageOrderDraft(manifest.pages.map((page) => page.page_number).join(", "));
+          setPageOrderDraft(manifest.pages.map((page: { page_number: any; }) => page.page_number).join(", "));
         } catch (error) {
           dispatch({
             type: "set_error",
@@ -199,19 +247,39 @@ export function EditorWorkspace() {
     dispatch({ type: "add_operation", payload: operation });
   };
 
-  const syncOperations = async () => {
-    if (!state.documentId) {
+  const applyQueuedOperations = async (operations: EditOperation[]) => {
+    if (!state.documentId || !operations.length) {
+      return state.manifest;
+    }
+
+    const result = await applyDocument(state.documentId, operations);
+    const warnings = normalizeWarnings(result.warnings, result.unsupported_operations);
+    dispatch({
+      type: "apply_complete",
+      payload: {
+        manifest: result.manifest,
+        warnings,
+        notice: "Preview updated. Keep editing or export the revised PDF."
+      }
+    });
+    setPageOrderDraft(result.manifest.pages.map((page: { page_number: any; }) => page.page_number).join(", "));
+    return result.manifest;
+  };
+
+  const handleApply = async () => {
+    if (!state.documentId || !state.operations.length) {
       return;
     }
+
     dispatch({ type: "set_error", payload: null });
     startTransition(() => {
       void (async () => {
         try {
-          await saveOperations(state.documentId!, state.operations);
+          await applyQueuedOperations(state.operations);
         } catch (error) {
           dispatch({
             type: "set_error",
-            payload: error instanceof Error ? error.message : "Failed to sync operations."
+            payload: error instanceof Error ? error.message : "Failed to apply changes."
           });
         }
       })();
@@ -226,16 +294,16 @@ export function EditorWorkspace() {
     startTransition(() => {
       void (async () => {
         try {
-          const result = await exportDocument(state.documentId!, state.operations);
+          if (state.operations.length) {
+            await applyQueuedOperations(state.operations);
+          }
+          const result = await exportDocument(state.documentId!);
           dispatch({
             type: "set_export",
             payload: {
-              exportPath: toApiUrl(result.download_url),
-              warnings: result.warnings.concat(
-                result.unsupported_operations.length
-                  ? [`Unsupported operations: ${result.unsupported_operations.join(", ")}`]
-                  : []
-              )
+              downloadPath: toApiUrl(result.download_url),
+              warnings: normalizeWarnings(result.warnings, result.unsupported_operations),
+              notice: "Export is ready. The download uses the original name with revised appended."
             }
           });
         } catch (error) {
@@ -292,6 +360,10 @@ export function EditorWorkspace() {
     });
     event.target.value = "";
   };
+
+  function syncOperations(): void {
+    throw new Error("Function not implemented.");
+  }
 
   return (
     <div className="grid gap-4 p-4 lg:grid-cols-[280px_minmax(0,1fr)_360px]">

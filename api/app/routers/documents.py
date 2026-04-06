@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 from pathlib import Path
 
 import fitz
@@ -8,7 +9,7 @@ from fastapi.responses import FileResponse, Response
 
 from app.config import settings
 from app.engines.open_source import OpenSourceEditorEngine
-from app.models.schemas import DocumentManifest, ExportResponse, OperationsPayload, UploadResponse
+from app.models.schemas import ApplyResponse, DocumentManifest, ExportResponse, OperationsPayload, UploadResponse
 from app.services.extractor import build_manifest
 from app.services.storage import storage_service
 
@@ -24,6 +25,50 @@ def _document_or_404(document_id: str) -> Path:
     return document_dir
 
 
+def _load_manifest(document_id: str) -> DocumentManifest:
+    payload = storage_service.read_json(storage_service.manifest_path(document_id))
+    return DocumentManifest.model_validate(payload)
+
+
+def _revised_filename(filename: str) -> str:
+    original_path = Path(filename)
+    suffix = original_path.suffix or ".pdf"
+    return f"{original_path.stem} revised{suffix}"
+
+
+def _apply_operations_to_working_document(
+    document_id: str,
+    payload: OperationsPayload,
+) -> tuple[DocumentManifest, list[str], list[str]]:
+    manifest = _load_manifest(document_id)
+    working_path = storage_service.working_path(document_id)
+    temp_working_path = storage_service.working_temp_path(document_id)
+    warnings, unsupported = engine.apply_operations(
+        source_path=working_path,
+        export_path=temp_working_path,
+        manifest=manifest,
+        operations=payload.operations,
+        asset_dir=storage_service.asset_dir(document_id),
+    )
+    shutil.copyfile(temp_working_path, working_path)
+    try:
+        temp_working_path.unlink(missing_ok=True)
+    except PermissionError:
+        pass
+    updated_manifest = build_manifest(
+        document_id=document_id,
+        filename=manifest.filename,
+        source_path=working_path,
+        storage=storage_service,
+    )
+    storage_service.write_json(
+        storage_service.manifest_path(document_id),
+        updated_manifest.model_dump(mode="json"),
+    )
+    storage_service.write_json(storage_service.operations_path(document_id), {"operations": []})
+    return updated_manifest, warnings, unsupported
+
+
 @router.post("/upload", response_model=UploadResponse)
 async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
     if not file.filename or not file.filename.lower().endswith(".pdf"):
@@ -37,9 +82,11 @@ async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
     document_id = storage_service.create_document_id()
     storage_service.ensure_document_dirs(document_id)
     source_path = storage_service.source_path(document_id)
+    working_path = storage_service.working_path(document_id)
     storage_service.write_bytes(source_path, content)
+    shutil.copyfile(source_path, working_path)
 
-    manifest = build_manifest(document_id, file.filename, source_path, storage_service)
+    manifest = build_manifest(document_id, file.filename, working_path, storage_service)
     storage_service.write_json(storage_service.manifest_path(document_id), manifest.model_dump(mode="json"))
     storage_service.write_json(storage_service.operations_path(document_id), {"operations": []})
 
@@ -47,6 +94,7 @@ async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
         document_id=document_id,
         filename=file.filename,
         source_url=manifest.source_url,
+        original_source_url=manifest.original_source_url,
         manifest_url=f"/documents/{document_id}/manifest",
         download_url=manifest.download_url,
     )
@@ -55,8 +103,7 @@ async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
 @router.get("/{document_id}/manifest", response_model=DocumentManifest)
 def get_manifest(document_id: str) -> DocumentManifest:
     _document_or_404(document_id)
-    payload = storage_service.read_json(storage_service.manifest_path(document_id))
-    return DocumentManifest.model_validate(payload)
+    return _load_manifest(document_id)
 
 
 @router.post("/{document_id}/operations", response_model=OperationsPayload)
@@ -66,21 +113,26 @@ def save_operations(document_id: str, payload: OperationsPayload) -> OperationsP
     return payload
 
 
+@router.post("/{document_id}/apply", response_model=ApplyResponse)
+def apply_operations(document_id: str, payload: OperationsPayload) -> ApplyResponse:
+    _document_or_404(document_id)
+    manifest, warnings, unsupported = _apply_operations_to_working_document(document_id, payload)
+    return ApplyResponse(
+        document_id=document_id,
+        manifest=manifest,
+        warnings=warnings,
+        unsupported_operations=unsupported,
+    )
+
+
 @router.post("/{document_id}/export", response_model=ExportResponse)
 def export_document(document_id: str, payload: OperationsPayload | None = None) -> ExportResponse:
     _document_or_404(document_id)
-    manifest_payload = storage_service.read_json(storage_service.manifest_path(document_id))
-    manifest = DocumentManifest.model_validate(manifest_payload)
-    operations_payload = payload or OperationsPayload.model_validate(
-        storage_service.read_json(storage_service.operations_path(document_id))
-    )
-    warnings, unsupported = engine.apply_operations(
-        source_path=storage_service.source_path(document_id),
-        export_path=storage_service.export_path(document_id),
-        manifest=manifest,
-        operations=operations_payload.operations,
-        asset_dir=storage_service.asset_dir(document_id),
-    )
+    warnings: list[str] = []
+    unsupported: list[str] = []
+    if payload and payload.operations:
+        _, warnings, unsupported = _apply_operations_to_working_document(document_id, payload)
+    shutil.copyfile(storage_service.working_path(document_id), storage_service.export_path(document_id))
     return ExportResponse(
         document_id=document_id,
         download_url=f"/documents/{document_id}/download",
@@ -91,6 +143,16 @@ def export_document(document_id: str, payload: OperationsPayload | None = None) 
 
 @router.get("/{document_id}/source")
 def get_source(document_id: str) -> FileResponse:
+    _document_or_404(document_id)
+    return FileResponse(
+        storage_service.working_path(document_id),
+        media_type="application/pdf",
+        filename="working.pdf",
+    )
+
+
+@router.get("/{document_id}/source/original")
+def get_original_source(document_id: str) -> FileResponse:
     _document_or_404(document_id)
     return FileResponse(
         storage_service.source_path(document_id),
@@ -105,17 +167,18 @@ def get_export(document_id: str) -> FileResponse:
     export_path = storage_service.export_path(document_id)
     if not export_path.exists():
         raise HTTPException(status_code=404, detail="Export has not been generated yet.")
+    manifest = _load_manifest(document_id)
     return FileResponse(
         export_path,
         media_type="application/pdf",
-        filename="edited.pdf",
+        filename=_revised_filename(manifest.filename),
     )
 
 
 @router.get("/{document_id}/pages/{page_number}/preview")
 def get_page_preview(document_id: str, page_number: int, scale: float = 0.2) -> Response:
     _document_or_404(document_id)
-    source_path = storage_service.source_path(document_id)
+    source_path = storage_service.working_path(document_id)
     document = fitz.open(source_path)
     if page_number < 1 or page_number > document.page_count:
         document.close()

@@ -39,6 +39,7 @@ export type DocumentManifest = {
   filename: string;
   page_count: number;
   source_url: string;
+  original_source_url: string;
   download_url: string;
   pages: PageManifest[];
   detected_fonts: string[];
@@ -48,6 +49,7 @@ export type UploadResponse = {
   document_id: string;
   filename: string;
   source_url: string;
+  original_source_url: string;
   manifest_url: string;
   download_url: string;
 };
@@ -84,3 +86,9 @@ export type ExportResponse = {
   unsupported_operations: string[];
 };
 
+export type ApplyResponse = {
+  document_id: string;
+  manifest: DocumentManifest;
+  warnings: string[];
+  unsupported_operations: string[];
+};

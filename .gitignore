@@ -10,6 +10,9 @@ __pycache__/
 .pytest_cache/
 
 api/data/
+api/api/data/documents
+api/api/data/annotations/
+api/api/data/
 .env
 .env.local
 

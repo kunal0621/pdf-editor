@@ -59,6 +59,7 @@ class DocumentManifest(BaseModel):
     filename: str
     page_count: int
     source_url: str
+    original_source_url: str
     download_url: str
     pages: list[PageManifest]
     detected_fonts: list[str] = Field(default_factory=list)
@@ -68,6 +69,7 @@ class UploadResponse(BaseModel):
     document_id: str
     filename: str
     source_url: str
+    original_source_url: str
     manifest_url: str
     download_url: str
 
@@ -88,6 +90,13 @@ class EditOperation(BaseModel):
 
 class OperationsPayload(BaseModel):
     operations: list[EditOperation] = Field(default_factory=list)
+
+
+class ApplyResponse(BaseModel):
+    document_id: str
+    manifest: DocumentManifest
+    warnings: list[str] = Field(default_factory=list)
+    unsupported_operations: list[str] = Field(default_factory=list)
 
 
 class ExportResponse(BaseModel):

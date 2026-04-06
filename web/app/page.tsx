@@ -1,4 +1,4 @@
-import { EditorWorkspace } from "@/components/editor-workspace";
+import EditorWrapper from "@/components/editor-wrapper";
 
 export default function HomePage() {
   return (
@@ -12,11 +12,13 @@ export default function HomePage() {
             <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="max-w-3xl">
                 <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-5xl">
-                  Upload, inspect, and export PDFs with an open-source editing engine.
+                  Upload, inspect, and export PDFs with an open-source editing
+                  engine.
                 </h1>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
-                  This MVP separates the editor UI from the mutation engine so you can start open source
-                  now and swap to a higher-fidelity SDK later without rebuilding the product.
+                  This MVP separates the editor UI from the mutation engine so
+                  you can start open source now and swap to a higher-fidelity
+                  SDK later without rebuilding the product.
                 </p>
               </div>
               <div className="rounded-2xl bg-slate-900 px-4 py-3 text-sm text-slate-100">
@@ -25,7 +27,7 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-          <EditorWorkspace />
+          <EditorWrapper />
         </section>
       </div>
     </main>

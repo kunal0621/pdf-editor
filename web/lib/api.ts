@@ -1,4 +1,5 @@
 import {
+  ApplyResponse,
   DocumentManifest,
   EditOperation,
   ExportResponse,
@@ -54,13 +55,19 @@ export function saveOperations(documentId: string, operations: EditOperation[]) 
   });
 }
 
-export function exportDocument(documentId: string, operations: EditOperation[]) {
-  return apiFetch<ExportResponse>(`/documents/${documentId}/export`, {
+export function applyDocument(documentId: string, operations: EditOperation[]) {
+  return apiFetch<ApplyResponse>(`/documents/${documentId}/apply`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
     body: JSON.stringify({ operations })
+  });
+}
+
+export function exportDocument(documentId: string) {
+  return apiFetch<ExportResponse>(`/documents/${documentId}/export`, {
+    method: "POST"
   });
 }
 
