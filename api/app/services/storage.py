@@ -59,5 +59,14 @@ class StorageService:
     def cleanup_document(self, document_id: str) -> None:
         shutil.rmtree(self.document_dir(document_id), ignore_errors=True)
 
+    def list_documents(self) -> list[str]:
+        if not self.root.exists():
+            return []
+        return [
+            d.name
+            for d in self.root.iterdir()
+            if d.is_dir() and (d / "manifest.json").exists()
+        ]
+
 
 storage_service = StorageService()

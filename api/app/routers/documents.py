@@ -69,6 +69,19 @@ def _apply_operations_to_working_document(
     return updated_manifest, warnings, unsupported
 
 
+@router.get("/", response_model=list[DocumentManifest])
+def list_documents() -> list[DocumentManifest]:
+    document_ids = storage_service.list_documents()
+    manifests: list[DocumentManifest] = []
+    for doc_id in document_ids:
+        try:
+            manifests.append(_load_manifest(doc_id))
+        except Exception:
+            pass
+    # Sort by a property if possible, but for now just return the list
+    return manifests
+
+
 @router.post("/upload", response_model=UploadResponse)
 async def upload_document(file: UploadFile = File(...)) -> UploadResponse:
     if not file.filename or not file.filename.lower().endswith(".pdf"):

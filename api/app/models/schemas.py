@@ -86,6 +86,11 @@ class EditOperation(BaseModel):
     rotation: int | None = None
     page_order: list[int] | None = None
     image_data_url: str | None = None
+    font_size: float | None = None
+    bold: bool | None = None
+    italic: bool | None = None
+    underline: bool | None = None
+    color: str | None = None
 
 
 class OperationsPayload(BaseModel):

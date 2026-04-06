@@ -77,6 +77,11 @@ export type EditOperation = {
   rotation?: number;
   page_order?: number[];
   image_data_url?: string;
+  font_size?: number;
+  bold?: boolean;
+  italic?: boolean;
+  underline?: boolean;
+  color?: string;
 };
 
 export type ExportResponse = {

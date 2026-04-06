@@ -2,20 +2,20 @@ import EditorWrapper from "@/components/editor-wrapper";
 
 export default function HomePage() {
   return (
-    <main className="min-h-screen px-4 py-6 md:px-6">
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
-        <section className="glass-panel overflow-hidden rounded-[28px] shadow-panel">
-          <div className="border-b border-slate-200/80 px-6 py-6">
+    <main className="h-screen w-full px-4 py-4 md:px-6 overflow-hidden flex flex-col">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1600px] flex-col gap-4">
+        <section className="glass-panel flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] shadow-panel">
+          <div className="shrink-0 border-b border-slate-200/80 px-6 py-4">
             <p className="text-xs uppercase tracking-[0.35em] text-teal-700">
               Browser-First PDF Editing
             </p>
-            <div className="mt-3 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+            <div className="mt-2 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
               <div className="max-w-3xl">
-                <h1 className="text-3xl font-semibold tracking-tight text-ink md:text-5xl">
+                <h1 className="text-2xl font-semibold tracking-tight text-ink md:text-3xl">
                   Upload, inspect, and export PDFs with an open-source editing
                   engine.
                 </h1>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-600 md:text-base">
+                <p className="mt-2 max-w-2xl text-xs leading-6 text-slate-600 md:text-sm">
                   This MVP separates the editor UI from the mutation engine so
                   you can start open source now and swap to a higher-fidelity
                   SDK later without rebuilding the product.
@@ -27,7 +27,9 @@ export default function HomePage() {
               </div>
             </div>
           </div>
-          <EditorWrapper />
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <EditorWrapper />
+          </div>
         </section>
       </div>
     </main>

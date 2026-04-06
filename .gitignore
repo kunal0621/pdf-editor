@@ -15,4 +15,5 @@ api/api/data/annotations/
 api/api/data/
 .env
 .env.local
+.vscode
 

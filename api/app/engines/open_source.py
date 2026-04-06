@@ -72,7 +72,7 @@ class OpenSourceEditorEngine(EditorEngine):
                             warnings.append("Skipped replace_text because the target block was not found.")
                             continue
                         self._cover_rect(page, block.bounds)
-                        self._insert_text(page, block.bounds, operation.text or "", block.font_size or 12)
+                        self._insert_text(page, block.bounds, operation.text or "", operation.font_size or block.font_size or 12, operation.bold or False, operation.italic or False, operation.underline or False, operation.color)
                     case "move_text":
                         block = text_lookup.get(operation.block_id or "")
                         if not block:
@@ -80,10 +80,10 @@ class OpenSourceEditorEngine(EditorEngine):
                             continue
                         self._cover_rect(page, block.bounds)
                         target_bounds = self._operation_bounds(operation, fallback=block.bounds)
-                        self._insert_text(page, target_bounds, operation.text or block.text, block.font_size or 12)
+                        self._insert_text(page, target_bounds, operation.text or block.text, operation.font_size or block.font_size or 12, operation.bold or False, operation.italic or False, operation.underline or False, operation.color)
                     case "add_overlay_text":
                         target_bounds = self._operation_bounds(operation)
-                        self._insert_text(page, target_bounds, operation.text or "", 12)
+                        self._insert_text(page, target_bounds, operation.text or "", operation.font_size or 12, operation.bold or False, operation.italic or False, operation.underline or False, operation.color)
                     case "replace_image":
                         block = image_lookup.get(operation.block_id or "")
                         if not block:
@@ -139,18 +139,54 @@ class OpenSourceEditorEngine(EditorEngine):
         page.apply_redactions(images=fitz.PDF_REDACT_IMAGE_NONE)
 
     @staticmethod
-    def _insert_text(page: fitz.Page, bounds: Bounds, text: str, font_size: float) -> None:
+    def _insert_text(page: fitz.Page, bounds: Bounds, text: str, font_size: float, bold: bool = False, italic: bool = False, underline: bool = False, color_hex: str | None = None) -> None:
         rect = fitz.Rect(bounds.x, bounds.y, bounds.x + bounds.width, bounds.y + bounds.height)
+
+        # Use correct PostScript Base14 names — PyMuPDF's shorthand aliases
+        # ("helvbo", "helvo", "hebo") are NOT built-in and require a font file.
+        if bold and italic:
+            ps_name = "Helvetica-BoldOblique"
+        elif bold:
+            ps_name = "Helvetica-Bold"
+        elif italic:
+            ps_name = "Helvetica-Oblique"
+        else:
+            ps_name = "Helvetica"
+
+        font = fitz.Font(ps_name)
+        fontbuffer = font.buffer
+
+        color = (0, 0, 0)
+        if color_hex and len(color_hex) == 7 and color_hex.startswith("#"):
+            try:
+                r = int(color_hex[1:3], 16) / 255.0
+                g = int(color_hex[3:5], 16) / 255.0
+                b = int(color_hex[5:7], 16) / 255.0
+                color = (r, g, b)
+            except ValueError:
+                pass
+
         overflow = page.insert_textbox(
             rect,
             text,
             fontsize=font_size,
-            color=(0, 0, 0),
-            fontname="helv",
+            color=color,
+            fontbuffer=fontbuffer,
             align=fitz.TEXT_ALIGN_LEFT,
         )
         if overflow < 0:
-            page.insert_text((bounds.x, bounds.y + font_size), text, fontsize=font_size, fontname="helv", color=(0, 0, 0))
+            page.insert_text(
+                (bounds.x, bounds.y + font_size),
+                text,
+                fontsize=font_size,
+                fontbuffer=fontbuffer,
+                color=color,
+            )
+
+        if underline:
+            p1 = fitz.Point(bounds.x, bounds.y + bounds.height - 2)
+            p2 = fitz.Point(bounds.x + bounds.width, bounds.y + bounds.height - 2)
+            page.draw_line(p1, p2, color=color, width=max(1, font_size / 15.0))
 
     @staticmethod
     def _operation_bounds(operation: EditOperation, fallback: Bounds | None = None) -> Bounds:

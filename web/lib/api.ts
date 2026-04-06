@@ -24,6 +24,10 @@ export function toApiUrl(path: string): string {
   return `${API_BASE}${path}`;
 }
 
+export function listDocuments(): Promise<DocumentManifest[]> {
+  return apiFetch<DocumentManifest[]>(`/documents/`);
+}
+
 export async function uploadDocument(file: File): Promise<UploadResponse> {
   const formData = new FormData();
   formData.append("file", file);
