@@ -2,9 +2,9 @@ import EditorWrapper from "@/components/editor-wrapper";
 
 export default function HomePage() {
   return (
-    <main className="h-screen w-full px-4 py-4 md:px-6 overflow-hidden flex flex-col">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-[1600px] flex-col gap-4">
-        <section className="glass-panel flex h-full min-h-0 flex-col overflow-hidden rounded-[28px] shadow-panel">
+    <main className="min-h-screen w-full px-4 py-4 md:px-6 flex flex-col lg:h-screen lg:overflow-hidden">
+      <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-4 flex-1 min-h-0">
+        <section className="glass-panel flex flex-col rounded-[28px] shadow-panel overflow-hidden flex-1 min-h-0">
           <div className="shrink-0 border-b border-slate-200/80 px-6 py-4">
             <p className="text-xs uppercase tracking-[0.35em] text-teal-700">
               Browser-First PDF Editing

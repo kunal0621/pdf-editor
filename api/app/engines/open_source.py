@@ -171,7 +171,7 @@ class OpenSourceEditorEngine(EditorEngine):
             text,
             fontsize=font_size,
             color=color,
-            fontbuffer=fontbuffer,
+            fontname=ps_name,
             align=fitz.TEXT_ALIGN_LEFT,
         )
         if overflow < 0:
@@ -179,7 +179,7 @@ class OpenSourceEditorEngine(EditorEngine):
                 (bounds.x, bounds.y + font_size),
                 text,
                 fontsize=font_size,
-                fontbuffer=fontbuffer,
+                fontname=ps_name,
                 color=color,
             )
 
