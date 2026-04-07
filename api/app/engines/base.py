@@ -10,11 +10,11 @@ class EditorEngine(ABC):
     @abstractmethod
     def apply_operations(
         self,
-        source_path: Path,
-        export_path: Path,
+        source_bytes: bytes,
         manifest: DocumentManifest,
         operations: list[EditOperation],
-        asset_dir: Path,
-    ) -> tuple[list[str], list[str]]:
+        user_id: str,
+        document_id: str,
+    ) -> tuple[bytes, list[str], list[str]]:
         raise NotImplementedError
 

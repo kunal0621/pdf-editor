@@ -9,14 +9,18 @@ from app.services.storage import StorageService
 
 
 def build_manifest(
+    user_id: str,
     document_id: str,
     filename: str,
-    source_path: Path,
+    source_bytes: bytes,
     storage: StorageService,
 ) -> DocumentManifest:
-    document = fitz.open(source_path)
-    revision_token = source_path.stat().st_mtime_ns
-    original_revision = storage.source_path(document_id).stat().st_mtime_ns
+    document = fitz.open("pdf", source_bytes)
+    # Revisions aren't mapped directly to stat().st_mtime_ns anymore, we can use a UUID or simple timestamp.
+    import time
+    revision_token = int(time.time() * 1000)
+    original_revision = revision_token
+
     detected_fonts: set[str] = set()
     pages: list[PageManifest] = []
 
@@ -69,7 +73,7 @@ def build_manifest(
                 asset_key = None
                 if image_bytes:
                     asset_key = f"{block_id}.{extension}"
-                    storage.write_bytes(storage.asset_dir(document_id) / asset_key, image_bytes)
+                    storage.write_bytes(user_id, document_id, f"assets/{asset_key}", image_bytes)
                 image_blocks.append(
                     ImageBlock(
                         id=block_id,

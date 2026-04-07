@@ -20,15 +20,16 @@ def _decode_data_url(data_url: str) -> bytes:
 class OpenSourceEditorEngine(EditorEngine):
     def apply_operations(
         self,
-        source_path: Path,
-        export_path: Path,
+        source_bytes: bytes,
         manifest: DocumentManifest,
         operations: list[EditOperation],
-        asset_dir: Path,
-    ) -> tuple[list[str], list[str]]:
+        user_id: str,
+        document_id: str,
+    ) -> tuple[bytes, list[str], list[str]]:
+        from app.services.storage import storage_service
         warnings: list[str] = []
         unsupported_operations: list[str] = []
-        document = fitz.open(source_path)
+        document = fitz.open("pdf", source_bytes)
         text_lookup: dict[str, TextBlock] = {}
         image_lookup: dict[str, ImageBlock] = {}
 
@@ -102,9 +103,15 @@ class OpenSourceEditorEngine(EditorEngine):
                         if not block.asset_key:
                             warnings.append("Skipped move_image because the original image bytes were unavailable.")
                             continue
+                        
+                        asset_bytes = storage_service.read_bytes(user_id, document_id, f"assets/{block.asset_key}")
+                        if not asset_bytes:
+                            warnings.append("Skipped move_image because the original image bytes could not be retrieved from S3.")
+                            continue
+
                         self._cover_rect(page, block.bounds)
                         target_bounds = self._operation_bounds(operation, fallback=block.bounds)
-                        page.insert_image(self._rect_from_bounds(target_bounds), filename=str(asset_dir / block.asset_key))
+                        page.insert_image(self._rect_from_bounds(target_bounds), stream=asset_bytes)
                     case "add_overlay_image":
                         if not operation.image_data_url:
                             warnings.append("Skipped add_overlay_image because no image was supplied.")
@@ -124,13 +131,10 @@ class OpenSourceEditorEngine(EditorEngine):
         if final_order != list(range(document.page_count)):
             document.select(final_order)
 
-        export_path.parent.mkdir(parents=True, exist_ok=True)
-        if export_path.exists():
-            export_path.unlink()
-        document.save(export_path)
+        result_bytes = document.tobytes()
         document.close()
 
-        return warnings, sorted(set(unsupported_operations))
+        return result_bytes, warnings, sorted(set(unsupported_operations))
 
     @staticmethod
     def _cover_rect(page: fitz.Page, bounds: Bounds) -> None:
