@@ -26,6 +26,7 @@ import {
   PageManifest,
   TextBlock,
 } from "@/lib/types";
+import { useAuth } from "@/components/auth-provider";
 
 import { DocumentPanel } from "./document-panel";
 import { WorkspaceSection } from "./workspace-section";
@@ -41,6 +42,8 @@ import {
 } from "./editor-types";
 
 export function EditorWorkspaceLive() {
+  const { session } = useAuth();
+  const token = session?.access_token;
   const [state, dispatch] = useReducer(editorReducer, initialEditorState);
   const [isPending, startTransition] = useTransition();
   const [zoom, setZoom] = useState(0.95);
@@ -207,7 +210,7 @@ export function EditorWorkspaceLive() {
           dispatch({
             type: "set_export",
             payload: {
-              downloadPath: toApiUrl(result.download_url),
+              downloadPath: toApiUrl(result.download_url, token),
               warnings: combineWarnings(
                 result.warnings,
                 result.unsupported_operations,

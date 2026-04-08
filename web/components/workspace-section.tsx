@@ -4,6 +4,7 @@ import { PdfCanvas } from "@/components/pdf-canvas";
 import { toApiUrl } from "@/lib/api";
 import { PageManifest } from "@/lib/types";
 import { EditorAction, EditorState } from "./editor-types";
+import { useAuth } from "@/components/auth-provider";
 
 type Props = {
   state: EditorState;
@@ -18,6 +19,9 @@ type Props = {
 };
 
 export function WorkspaceSection({ state, dispatch, currentPage, isPending, zoom, onZoomIn, onZoomOut, onApply, onExport }: Props) {
+  const { session } = useAuth();
+  const token = session?.access_token;
+
   return (
     <section className="glass-panel flex flex-col lg:h-full lg:min-h-0 rounded-[24px] p-4 shadow-panel">
       {/* Toolbar */}
@@ -67,7 +71,7 @@ export function WorkspaceSection({ state, dispatch, currentPage, isPending, zoom
               scale={zoom}
               selectedImageBlockId={state.selectedImageBlockId}
               selectedTextBlockId={state.selectedTextBlockId}
-              sourceUrl={toApiUrl(state.manifest.source_url)}
+              sourceUrl={toApiUrl(state.manifest.source_url, token)}
               title="Editor canvas"
               subtitle="Select blocks here, queue edits in the inspector, then click Apply Changes."
               onSelectImageBlock={(id) => dispatch({ type: "select_image", payload: id })}
@@ -79,7 +83,7 @@ export function WorkspaceSection({ state, dispatch, currentPage, isPending, zoom
               selectedImageBlockId={null}
               selectedTextBlockId={null}
               showOverlays={false}
-              sourceUrl={toApiUrl(state.manifest.source_url)}
+              sourceUrl={toApiUrl(state.manifest.source_url, token)}
               title="Live preview"
               subtitle="This clean preview refreshes only when Apply Changes runs."
               onSelectImageBlock={() => undefined}

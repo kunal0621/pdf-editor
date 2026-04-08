@@ -4,6 +4,7 @@ import { ChangeEvent } from "react";
 import { toApiUrl } from "@/lib/api";
 import { DocumentManifest, PageManifest } from "@/lib/types";
 import { EditorAction, EditorState } from "./editor-types";
+import { useAuth } from "@/components/auth-provider";
 
 type Props = {
   state: EditorState;
@@ -76,10 +77,12 @@ function PageThumbnail({
   page,
   selected,
   onSelect,
+  token,
 }: {
   page: PageManifest;
   selected: boolean;
   onSelect: () => void;
+  token?: string | null;
 }) {
   return (
     <button
@@ -90,7 +93,7 @@ function PageThumbnail({
       <img
         alt={`Preview of page ${page.page_number}`}
         className="h-28 w-full object-cover object-top"
-        src={toApiUrl(page.preview_url)}
+        src={toApiUrl(page.preview_url, token)}
       />
       <div className="px-3 py-2 text-xs text-slate-500">
         Page {page.page_number} — {page.text_blocks.length} text ·{" "}
@@ -112,6 +115,9 @@ export function DocumentPanel({
   onLoadDoc,
   onDeleteDoc,
 }: Props) {
+  const { session } = useAuth();
+  const token = session?.access_token;
+
   return (
     <aside className="glass-panel rounded-[24px] p-4 shadow-panel flex flex-col lg:h-full lg:min-h-0 transition-all duration-300">
       {!isOpen ? (
@@ -234,6 +240,7 @@ export function DocumentPanel({
                     key={page.page_number}
                     page={page}
                     selected={page.page_number === state.selectedPage}
+                    token={token}
                     onSelect={() =>
                       dispatch({
                         type: "select_page",

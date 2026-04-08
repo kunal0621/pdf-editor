@@ -27,11 +27,16 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export function toApiUrl(path: string): string {
+export function toApiUrl(path: string, token?: string | null): string {
   if (path.startsWith("http://") || path.startsWith("https://")) {
     return path;
   }
-  return `${API_BASE}${path}`;
+  const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
+  const url = new URL(`${baseUrl}${path}`);
+  if (token) {
+    url.searchParams.set("token", token);
+  }
+  return url.toString();
 }
 
 export function listDocuments(): Promise<DocumentManifest[]> {

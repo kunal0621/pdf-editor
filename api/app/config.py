@@ -16,6 +16,8 @@ else:
 @dataclass(slots=True)
 class Settings:
     supabase_jwt_secret: str = os.getenv("SUPABASE_JWT_SECRET", "")
+    supabase_url: str = os.getenv("SUPABASE_URL", "")
+    supabase_anon_key: str = os.getenv("SUPABASE_ANON_KEY", "")
     s3_endpoint_url: str = os.getenv("S3_ENDPOINT_URL", "")
     s3_access_key_id: str = os.getenv("S3_ACCESS_KEY_ID", "")
     s3_secret_access_key: str = os.getenv("S3_SECRET_ACCESS_KEY", "")

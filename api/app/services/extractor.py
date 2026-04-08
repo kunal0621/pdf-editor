@@ -86,6 +86,11 @@ def build_manifest(
                     )
                 )
 
+        # Sort blocks by area (descending) so that smaller blocks appear later in the list.
+        # This allows them to be rendered "on top" in the frontend DOM for easier selection.
+        text_blocks.sort(key=lambda b: b.bounds.width * b.bounds.height, reverse=True)
+        image_blocks.sort(key=lambda b: b.bounds.width * b.bounds.height, reverse=True)
+
         pages.append(
             PageManifest(
                 page_number=page_index + 1,

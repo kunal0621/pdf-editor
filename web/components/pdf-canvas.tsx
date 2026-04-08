@@ -109,7 +109,9 @@ export function PdfCanvas({
 
         {showOverlays ? (
           <div className="pointer-events-none absolute inset-0">
-            {page.text_blocks.map((block) => (
+            {[...page.text_blocks]
+              .sort((a, b) => (b.bounds.width * b.bounds.height) - (a.bounds.width * a.bounds.height))
+              .map((block) => (
               <button
                 className={`pointer-events-auto absolute rounded-md border-2 transition ${
                   selectedTextBlockId === block.id
@@ -129,7 +131,9 @@ export function PdfCanvas({
               />
             ))}
 
-            {page.image_blocks.map((block) => (
+            {[...page.image_blocks]
+              .sort((a, b) => (b.bounds.width * b.bounds.height) - (a.bounds.width * a.bounds.height))
+              .map((block) => (
               <button
                 className={`pointer-events-auto absolute rounded-md border-2 transition ${
                   selectedImageBlockId === block.id
