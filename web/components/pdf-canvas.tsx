@@ -17,6 +17,7 @@ type PdfCanvasProps = {
   selectedImageBlockId: string | null;
   onSelectTextBlock: (blockId: string | null) => void;
   onSelectImageBlock: (blockId: string | null) => void;
+  interactionMode?: "text" | "image";
 };
 
 export function PdfCanvas({
@@ -29,7 +30,8 @@ export function PdfCanvas({
   selectedTextBlockId,
   selectedImageBlockId,
   onSelectTextBlock,
-  onSelectImageBlock
+  onSelectImageBlock,
+  interactionMode = "text",
 }: PdfCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,7 +40,7 @@ export function PdfCanvas({
   useEffect(() => {
     GlobalWorkerOptions.workerSrc = new URL(
       "pdfjs-dist/build/pdf.worker.min.mjs",
-      import.meta.url
+      import.meta.url,
     ).toString();
   }, []);
 
@@ -67,11 +69,15 @@ export function PdfCanvas({
         canvas.height = viewport.height;
         await pdfPage.render({
           canvasContext: context,
-          viewport
+          viewport,
         }).promise;
       } catch (renderError) {
         if (mounted) {
-          setError(renderError instanceof Error ? renderError.message : "Failed to render PDF.");
+          setError(
+            renderError instanceof Error
+              ? renderError.message
+              : "Failed to render PDF.",
+          );
         }
       } finally {
         if (mounted) {
@@ -95,7 +101,9 @@ export function PdfCanvas({
           <p className="font-medium">{title}</p>
           <p className="text-xs text-slate-400">{subtitle}</p>
         </div>
-        {loading ? <span className="text-xs text-slate-400">Rendering...</span> : null}
+        {loading ? (
+          <span className="text-xs text-slate-400">Rendering...</span>
+        ) : null}
       </div>
 
       {error ? (
@@ -110,48 +118,60 @@ export function PdfCanvas({
         {showOverlays ? (
           <div className="pointer-events-none absolute inset-0">
             {[...page.text_blocks]
-              .sort((a, b) => (b.bounds.width * b.bounds.height) - (a.bounds.width * a.bounds.height))
+              .sort(
+                (a, b) =>
+                  b.bounds.width * b.bounds.height -
+                  a.bounds.width * a.bounds.height,
+              )
               .map((block) => (
-              <button
-                className={`pointer-events-auto absolute rounded-md border-2 transition ${
-                  selectedTextBlockId === block.id
-                    ? "border-teal-300 bg-teal-400/20"
-                    : "border-teal-500/80 bg-teal-500/10 hover:bg-teal-500/20"
-                }`}
-                key={block.id}
-                onClick={() => onSelectTextBlock(block.id)}
-                style={{
-                  left: block.bounds.x * scale,
-                  top: block.bounds.y * scale,
-                  width: Math.max(block.bounds.width * scale, 8),
-                  height: Math.max(block.bounds.height * scale, 8)
-                }}
-                type="button"
-                title={block.text}
-              />
-            ))}
+                <button
+                  className={`pointer-events-auto absolute rounded-md border-2 transition ${
+                    interactionMode !== "text" ? "hidden" : ""
+                  } ${
+                    selectedTextBlockId === block.id
+                      ? "border-teal-300 bg-teal-400/20"
+                      : "border-teal-500/80 bg-teal-500/10 hover:bg-teal-500/20"
+                  }`}
+                  key={block.id}
+                  onClick={() => onSelectTextBlock(block.id)}
+                  style={{
+                    left: block.bounds.x * scale,
+                    top: block.bounds.y * scale,
+                    width: Math.max(block.bounds.width * scale, 8),
+                    height: Math.max(block.bounds.height * scale, 8),
+                  }}
+                  type="button"
+                  title={block.text}
+                />
+              ))}
 
             {[...page.image_blocks]
-              .sort((a, b) => (b.bounds.width * b.bounds.height) - (a.bounds.width * a.bounds.height))
+              .sort(
+                (a, b) =>
+                  b.bounds.width * b.bounds.height -
+                  a.bounds.width * a.bounds.height,
+              )
               .map((block) => (
-              <button
-                className={`pointer-events-auto absolute rounded-md border-2 transition ${
-                  selectedImageBlockId === block.id
-                    ? "border-rose-300 bg-rose-400/20"
-                    : "border-rose-500/80 bg-rose-500/10 hover:bg-rose-500/20"
-                }`}
-                key={block.id}
-                onClick={() => onSelectImageBlock(block.id)}
-                style={{
-                  left: block.bounds.x * scale,
-                  top: block.bounds.y * scale,
-                  width: Math.max(block.bounds.width * scale, 8),
-                  height: Math.max(block.bounds.height * scale, 8)
-                }}
-                type="button"
-                title={`Image block ${block.id}`}
-              />
-            ))}
+                <button
+                  className={`pointer-events-auto absolute rounded-md border-2 transition ${
+                    interactionMode !== "image" ? "hidden" : ""
+                  } ${
+                    selectedImageBlockId === block.id
+                      ? "border-rose-300 bg-rose-400/20"
+                      : "border-rose-500/80 bg-rose-500/10 hover:bg-rose-500/20"
+                  }`}
+                  key={block.id}
+                  onClick={() => onSelectImageBlock(block.id)}
+                  style={{
+                    left: block.bounds.x * scale,
+                    top: block.bounds.y * scale,
+                    width: Math.max(block.bounds.width * scale, 8),
+                    height: Math.max(block.bounds.height * scale, 8),
+                  }}
+                  type="button"
+                  title={`Image block ${block.id}`}
+                />
+              ))}
           </div>
         ) : null}
       </div>

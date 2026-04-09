@@ -38,6 +38,31 @@ export function WorkspaceSection({ state, dispatch, currentPage, isPending, zoom
           <button className="rounded-full border border-slate-300 px-3 py-2 text-sm text-slate-700" onClick={onZoomIn} type="button">
             Zoom +
           </button>
+
+          <div className="ml-2 flex items-center rounded-full bg-slate-100 p-1">
+            <button
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+                state.interactionMode === "text"
+                  ? "bg-white text-teal-700 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+              onClick={() => dispatch({ type: "set_interaction_mode", payload: "text" })}
+              type="button"
+            >
+              Text Mode
+            </button>
+            <button
+              className={`rounded-full px-4 py-1.5 text-xs font-semibold transition-all ${
+                state.interactionMode === "image"
+                  ? "bg-white text-teal-700 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+              onClick={() => dispatch({ type: "set_interaction_mode", payload: "image" })}
+              type="button"
+            >
+              Image Mode
+            </button>
+          </div>
           <button
             className="rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
             disabled={!state.operations.length || isPending}
@@ -73,7 +98,8 @@ export function WorkspaceSection({ state, dispatch, currentPage, isPending, zoom
               selectedTextBlockId={state.selectedTextBlockId}
               sourceUrl={toApiUrl(state.manifest.source_url, token)}
               title="Editor canvas"
-              subtitle="Select blocks here, queue edits in the inspector, then click Apply Changes."
+              subtitle={`Currently in ${state.interactionMode} editing mode.`}
+              interactionMode={state.interactionMode}
               onSelectImageBlock={(id) => dispatch({ type: "select_image", payload: id })}
               onSelectTextBlock={(id) => dispatch({ type: "select_text", payload: id })}
             />

@@ -185,5 +185,10 @@ def get_page_preview(document_id: str, page_number: int, scale: float = 0.2, use
 @router.delete("/{document_id}")
 def delete_document(document_id: str, user_id: str = Depends(get_current_user)) -> dict[str, bool]:
     _document_or_404(user_id, document_id)
-    storage_service.cleanup_document(user_id, document_id)
-    return {"deleted": True}
+    try:
+        storage_service.cleanup_document(user_id, document_id)
+        return {"deleted": True}
+    except Exception as e:
+        import logging
+        logging.error(f"Failed to delete document {document_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete document: {str(e)}")

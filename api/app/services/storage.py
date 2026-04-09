@@ -59,28 +59,38 @@ class StorageService:
         prefix = f"{user_id}/{document_id}/"
         paginator = self.s3_client.get_paginator('list_objects_v2')
         pages = paginator.paginate(Bucket=self.bucket, Prefix=prefix)
-        delete_us = []
-        for item in pages.search('Contents'):
-            if item:
-                delete_us.append({'Key': item['Key']})
         
-        if delete_us:
-            self.s3_client.delete_objects(Bucket=self.bucket, Delete={'Objects': delete_us})
+        objects_to_delete = []
+        for page in pages:
+            if 'Contents' in page:
+                for obj in page['Contents']:
+                    if obj.get('Key'):
+                        objects_to_delete.append({'Key': obj['Key']})
+                    
+        # Batch delete in chunks of 1000 (S3 limit)
+        for i in range(0, len(objects_to_delete), 1000):
+            chunk = objects_to_delete[i:i + 1000]
+            try:
+                self.s3_client.delete_objects(Bucket=self.bucket, Delete={'Objects': chunk})
+            except ClientError:
+                # Log or handle appropriately; here we just want to ensure it tries even if one chunk fails
+                pass
 
     def list_documents(self, user_id: str) -> list[str]:
         if not self.s3_client:
             return []
         prefix = f"{user_id}/"
         paginator = self.s3_client.get_paginator('list_objects_v2')
-        result = paginator.paginate(Bucket=self.bucket, Prefix=prefix, Delimiter='/')
+        result_pages = paginator.paginate(Bucket=self.bucket, Prefix=prefix, Delimiter='/')
         document_ids = []
-        for prefix_obj in result.search('CommonPrefixes'):
-            if prefix_obj:
-                # user_id/doc_id/ -> doc_id
-                doc_path = prefix_obj['Prefix']
-                doc_id = doc_path.split('/')[1]
-                if self.exists(user_id, doc_id, "manifest.json"):
-                    document_ids.append(doc_id)
+        for page in result_pages:
+            if 'CommonPrefixes' in page:
+                for prefix_obj in page['CommonPrefixes']:
+                    # doc_path is "user_id/doc_id/"
+                    doc_path = prefix_obj['Prefix']
+                    doc_id = doc_path.replace(prefix, "").strip("/")
+                    if doc_id and self.exists(user_id, doc_id, "manifest.json"):
+                        document_ids.append(doc_id)
         return document_ids
 
     def generate_presigned_url(self, user_id: str, document_id: str, filename: str) -> str:

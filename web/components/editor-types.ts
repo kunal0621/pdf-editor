@@ -13,6 +13,7 @@ export type EditorState = {
   warnings: string[];
   notice: string | null;
   error: string | null;
+  interactionMode: "text" | "image";
 };
 
 export type EditorAction =
@@ -25,6 +26,7 @@ export type EditorAction =
   | { type: "apply_complete"; payload: { manifest: DocumentManifest; warnings: string[]; notice: string } }
   | { type: "set_export"; payload: { downloadPath: string; warnings: string[]; notice: string } }
   | { type: "set_error"; payload: string | null }
+  | { type: "set_interaction_mode"; payload: "text" | "image" }
   | { type: "reset" };
 
 export const initialEditorState: EditorState = {
@@ -38,6 +40,7 @@ export const initialEditorState: EditorState = {
   warnings: [],
   notice: null,
   error: null,
+  interactionMode: "text",
 };
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
@@ -96,6 +99,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, ...action.payload, error: null };
     case "set_error":
       return { ...state, error: action.payload };
+    case "set_interaction_mode":
+      return { ...state, interactionMode: action.payload, selectedTextBlockId: null, selectedImageBlockId: null };
     case "reset":
       return initialEditorState;
     default:
